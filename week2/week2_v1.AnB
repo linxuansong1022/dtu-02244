@@ -1,0 +1,21 @@
+Protocol: OpenAuth_v1
+
+Types:
+  Agent A,B,P;
+  Number ReqA,ReqP,Token,Photos;
+  Function pk;
+
+Knowledge:
+  A: A,B,P,pk(A),pk(B),pk(P),inv(pk(A));
+  B: A,B,P,pk(A),pk(B),pk(P),inv(pk(B));
+  P: A,B,P,pk(A),pk(B),pk(P),inv(pk(P));
+
+Actions:
+  A->P: {A,B,ReqA}inv(pk(A))
+  P->B: {A,P,ReqP}inv(pk(P))
+  B->A: {P,B,Token}inv(pk(B))
+  A->B: {P,B,Token}inv(pk(A))
+  B->P: {Photos}pk(P)
+
+Goals:
+  Photos secret between B,P

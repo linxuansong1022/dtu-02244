@@ -1,0 +1,49 @@
+OFMC ships with executables for the main platforms, see directories
+
+executables/linux
+executables/mac
+executables/windows
+
+Check out if they run on your machine:
+
+- Open a command line window
+- navigate to the respective directory for your archicture
+  (most OSes now allow drag and drop of folders to the command line window!)
+- run the command ofmc (or ofmc.exe on Windows)
+
+The response from OFMC should be:
+
+===
+ofmc: No input file specified.
+usage: ofmc [<OPTIONS>] <INPUT FILE>
+Options:
+  --numSess <INT>  specify the number of sessions (for an AnB spec)
+  --of IF          (for AnB files only:) do not check, but produce AVISPA IF
+....
+BLABLABLA
+....
+IF/Annotated AnB to cryptIF
+  --attacktrace   If an attack is found, generate a graphic chart of it 
+
+CallStack (from HasCallStack):
+  error, called at Main.hs:193:16 in main:Main
+===
+
+When you get this, you have OFMC running. 
+
+You may get security warnings/blocks when you first run it.
+
+It can be convenient to move the OFMC executable to some place where you keep command line tools, and make that place part of your PATH environment variable. Then you only need to type "ofmc" to run it, no matter in which directory you are. If that is too much effort, a very simple trick is to move the OFMC executable to the directory where you are working (e.g. where you have an *.AnB file that you are working on).
+
+================================
+
+If the executable is just not executable on your machine you can also compile it from source. You may well ask us for help!
+
+This requires the Glasgow Haskell Compiler and a library for parallelism. There is kind of a package manager for Haskell called Cabal. For instance on Linux with the apt-get the following is sufficient to install the necessary software:
+
+apt-get install -y ghc make ghc-prof ghc-doc cabal-install
+cabal update
+cabal install --lib parallel
+
+Then you can go to the directory src/ of the OFMC package and just run the command "make". This should produce an executable "ofmc" (or "ofmc.exe") in that directory.
+ 
