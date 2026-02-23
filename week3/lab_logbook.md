@@ -71,26 +71,77 @@ Goals:
 
 ### 4.2 攻击发现 (OFMC Output: `ATTACK_FOUND`)
 
-OFMC 报告在 2 步深度（2 plies）内即发现攻击，攻击轨迹如下：
+#### OFMC 完整输出
+```
+SUMMARY:      ATTACK_FOUND
+GOAL:         secrets
+TIME:         228 ms
+visitedNodes: 13 nodes
+depth:        2 plies
+
+ATTACK TRACE:
+i -> (x35,1): {x38,x37,x35,x210,x211}_inv(pk(i))
+(x35,1) -> i: {{x38,x37,x35,x210,x211}_inv(pk(i)),NPreq(1)}_inv(pk(x35))
+i -> (x35,1): {x313}_(pk(x35))
+i -> (i,17): x313
+```
+
+#### 变量对应关系（来自 Reached State）
+
+| OFMC 变量 | 对应含义 | 依据 |
+|----------|---------|------|
+| `x35` | 诚实代理 P | `state_rP(x35,...)` |
+| `x37` | 诚实代理 B | `contains(secrecyset(...),x37)` |
+| `x38` | 某代理 A | M3 消息中 A 的位置 |
+| `x210,x211` | ReqA, N_A | Number 类型新鲜值 |
+| `x313` | Photos | `secrets(x313,...,i)` |
+| `NPreq(1)` | P 生成的 N_P_req | P 角色实例 1 |
+| `pk(i)` | P 眼中"IdP 的公钥" | `state_rP(x35,2,inv(pk(x35)),pk(i),...)` |
+
+> 关键发现：P 的状态中 `pk(i)` 出现在"IdP 公钥"的位置，说明在本次攻击实例化中 **P 的 IdP 变量被绑定为入侵者 `i`**。
+
+#### 攻击步骤解析
 
 ```
-i -> P: {x,B,P,ReqA,N_A}_inv(pk(i))
-         % 入侵者用自己的私钥伪造一个"IdP 签名"令牌发给 P
-
-P -> i: {{x,B,P,ReqA,N_A}_inv(pk(i)), N_P_req}_inv(pk(P))
-         % P 信任该伪造令牌，将签名转发请求发给"B"（实为入侵者）
-
-i -> P: {Photos}_pk(P)
-         % 入侵者冒充 B，发送一个由自己选定的 Photos
-
-% 结果：入侵者知道 Photos 的值 → 违反 "Photos secret between B,P"
+步骤①  i -> P: {x38,x37,x35,x210,x211}_inv(pk(i))
 ```
+入侵者用**自己的私钥** `inv(pk(i))` 伪造一个"IdP 签名证书"发给 P。
+对应协议 M3：`A->P: {A,B,P,ReqA,N_A}inv(pk(IdP))`。
+由于 P 的 IdP 变量已绑定为 `i`，P 用 `pk(i)` 验证签名——验证通过。
+**A、B、IdP 此时全部处于步骤 0，完全未参与。**
 
-**根本原因（Root Cause）**：
-在 Dolev-Yao 模型中，入侵者 $i$ 也是一个合法代理，拥有自己的公私钥对 `pk(i)/inv(pk(i))`。当 P 角色的实例中，`IdP` 变量被绑定为 $i$ 时，入侵者可以自签一个"合法"的 IdP 令牌发给 P。P 无法区分真实 IdP 和伪装成 IdP 的入侵者，因为协议中没有对 IdP 身份进行独立绑定和验证。
+```
+步骤②  P -> i: {{x38,x37,x35,x210,x211}_inv(pk(i)),NPreq(1)}_inv(pk(x35))
+```
+P 接受伪造证书，生成新鲜数 `NPreq(1)`，将请求嵌套签名后发给"B"。
+对应协议 M4：`P->B: {{...}inv(pk(IdP)),N_P_req}inv(pk(P))`。
+入侵者在网络上截获这条消息（Dolev-Yao 模型中入侵者控制所有网络流量）。
 
-**次要原因**：
-B 发送 `{Photos}pk(P)` 时没有任何对 P 的认证，也没有将 Photos 与 P 的具体请求（`N_P_req`）绑定。入侵者可以充当假 B，用自己选定的 Photos 值回应 P，从而知晓 Photos 内容。
+```
+步骤③  i -> P: {x313}_pk(x35)
+```
+入侵者冒充 B，用 P 的公钥加密一个**自己选定的值** `x313` 发给 P。
+对应协议 M5：`B->P: {Photos}pk(P)`。
+P 用 `inv(pk(P))` 解密，接收了"Photos = x313"。
+
+```
+步骤④  i 知道 x313
+```
+因为 x313 是入侵者自己选的，入侵者当然知道其值。
+**违反目标：`Photos secret between B,P`**（B 从未参与，P 收到的是假照片）。
+
+#### 根本原因分析
+
+**原因一（主要）：IdP 身份未固定绑定**
+
+P 的初始知识为 `P: A,B,P,IdP,pk(B),pk(P),pk(IdP),inv(pk(P))`。
+其中 `IdP` 是一个可变的 Agent 变量。在 OFMC 的 Dolev-Yao 模型中，入侵者 $i$ 本身也是合法代理，拥有 `pk(i)/inv(pk(i))`。当 P 角色实例化时，`IdP` 变量可以被绑定为任意代理——包括 $i$。一旦 `IdP = i`，入侵者就能签出 P 认为合法的"IdP 证书"。
+
+**原因二（次要）：B 的响应未与 P 的请求绑定**
+
+B 发送 `{Photos}pk(P)` 时，消息中不包含 P 发出的 `N_P_req`。P 无法验证收到的 Photos 是否真的来自对 M4 的响应，任何人都可以用 `pk(P)` 构造一条消息发给 P。
+
+**攻击的本质**：整个攻击仅在入侵者和 P 之间完成，完全绕过了诚实的 A、B 和 IdP。协议依赖的"信任链"（A→IdP→P→B）在没有固定 IdP 身份的情况下，可以被入侵者单独短路。
 
 ## 5. 特殊任务：Lazy Intruder 静态分析 (Special Task)
 
