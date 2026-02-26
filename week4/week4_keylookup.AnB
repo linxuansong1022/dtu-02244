@@ -1,0 +1,16 @@
+Protocol: KeyLookup  
+Types:
+  Agent A, X, IdP;  
+  Number N_A;
+  Function pk;
+  Format f1, f2;  
+Knowledge:
+  A: A,X, IdP, pk(IdP); 
+  IdP: IdP, A, X, pk(IdP), inv(pk(IdP)), pk(X);
+
+Actions:
+  A->IdP: f1(A, X,N_A)
+  IdP->A: {f2(A,X, pk(X),N_A)}inv(pk(IdP))
+
+Goals:
+    A authenticates IdP on pk(X),N_A

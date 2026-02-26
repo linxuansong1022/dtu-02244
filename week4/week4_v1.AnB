@@ -1,0 +1,22 @@
+Protocol: OpenAuth_v4_IdP
+
+Types:
+  Agent A,B,P,IdP;
+  Number ReqA,Photos,N_A,N_P_req;
+  Function pk,pw;
+  Format f1, f2, f3, f4;  
+Knowledge:
+  A: A,B,P,IdP,pk(IdP),pw(A);
+  B: A,B,P,IdP,pk(B),pk(P),pk(IdP),inv(pk(B));
+  P: A,B,P,IdP,pk(B),pk(P),pk(IdP),inv(pk(P));
+  IdP: A,B,P,IdP,pk(B),pk(P),pk(IdP),inv(pk(IdP)),pw(A);
+
+Actions:
+  A->IdP: f1(A, B, P, ReqA, N_A, pw(A))
+  IdP->A: {f2(A, B, P, ReqA, N_A)}inv(pk(IdP))
+  A->P: {f2(A, B, P, ReqA, N_A)}inv(pk(IdP))
+  P->B: {f3({f2(A, B, P, ReqA, N_A)}inv(pk(IdP)), N_P_req)}inv(pk(P))
+  B->P: {f4(Photos)}pk(P)
+
+Goals:
+  Photos secret between B,P
