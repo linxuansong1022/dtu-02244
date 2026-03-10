@@ -1,4 +1,4 @@
-Protocol: OpenAuth_v6_Channels
+Protocol: OpenAuth_v5
 
 Types:
   Agent A,B,P,idp;
@@ -14,11 +14,9 @@ Knowledge:
 where B!=P
 
 Actions:
-  [A] *->* idp: f1(B, P, ReqA, N_A, pw(A))
-  idp *->* [A]: {f2(B, P, ReqA, N_A)}inv(pk(idp))
-
-  [A] *->* P: {f2(B, P, ReqA, N_A)}inv(pk(idp))
-
+  A->idp: {f1(B, P, ReqA, N_A, pw(A))}pk(idp)
+  idp->A: {f2(B, P, ReqA, N_A)}inv(pk(idp))
+  A->P: {f2(B, P, ReqA, N_A)}inv(pk(idp))
   P->B: {f3(B, P, {f2(B, P, ReqA, N_A)}inv(pk(idp)), N_P_req)}inv(pk(P))
   B->P: {{f4(B, P, N_P_req, Photos)}inv(pk(B))}pk(P)
 
