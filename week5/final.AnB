@@ -14,7 +14,7 @@ Knowledge:
 where B!=P
 
 Actions:
-  A->idp: {f1(B, P, ReqA, N_A, pw(A))}pk(idp)
+  A->idp: {f1(A, B, P, ReqA, N_A, pw(A))}pk(idp)
   idp->A: {f2(A, B, P, ReqA, N_A)}inv(pk(idp))
   A->P: {f2(A, B, P, ReqA, N_A)}inv(pk(idp))
   P->B: f3req(B, P, {f2(A, B, P, ReqA, N_A)}inv(pk(idp)))
