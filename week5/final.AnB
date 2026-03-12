@@ -1,0 +1,28 @@
+Protocol: OpenAuth_final
+
+Types:
+  Agent A,B,P,idp;
+  Number ReqA,Photos,N_A,N_P_req,N_B;
+  Function pk,pw;
+  Format f1, f2, f3req, f3chal, f3resp, f4;
+
+Knowledge:
+  A: A,B,P,idp,pk(idp),pw(A);
+  B: A,B,P,idp,pk(B),pk(P),pk(idp),inv(pk(B));
+  P: A,B,P,idp,pk(B),pk(P),pk(idp),inv(pk(P));
+  idp: A,B,P,idp,pk(B),pk(P),pk(idp),inv(pk(idp)),pw(A)
+where B!=P
+
+Actions:
+  A->idp: {f1(B, P, ReqA, N_A, pw(A))}pk(idp)
+  idp->A: {f2(A, B, P, ReqA, N_A)}inv(pk(idp))
+  A->P: {f2(A, B, P, ReqA, N_A)}inv(pk(idp))
+  P->B: f3req(B, P, {f2(A, B, P, ReqA, N_A)}inv(pk(idp)))
+  B->P: {f3chal(B, P, N_B)}pk(P)
+  P->B: {f3resp(B, P, {f2(A, B, P, ReqA, N_A)}inv(pk(idp)), N_P_req, N_B)}inv(pk(P))
+  B->P: {{f4(B, P, N_P_req, N_B, Photos)}inv(pk(B))}pk(P)
+
+Goals:
+  Photos secret between B,P
+  P authenticates B on Photos,N_P_req,N_B
+  B authenticates P on N_P_req,N_B
