@@ -49,6 +49,33 @@ Goals:
     A authenticates IdP on pk(X),N_A
 ```
 
+### AnB 代码实现 (`week4_v2.AnB` Snapshot):
+```AnB
+Protocol: OpenAuth_v5
+
+Types:
+  Agent A,B,P,idp;
+  Number ReqA,Photos,N_A,N_P_req;
+  Function pk,pw;
+  Format f1, f2, f3, f4;
+
+Knowledge:
+  A: A,B,P,idp,pk(idp),pw(A);
+  B: A,B,P,idp,pk(B),pk(P),pk(idp),inv(pk(B));
+  P: A,B,P,idp,pk(B),pk(P),pk(idp),inv(pk(P));
+  idp: A,B,P,idp,pk(B),pk(P),pk(idp),inv(pk(idp)),pw(A)
+where B!=P
+
+Actions:
+  A->idp: {f1(B, P, ReqA, N_A, pw(A))}pk(idp)
+  idp->A: {f2(B, P, ReqA, N_A)}inv(pk(idp))
+  A->P: {f2(B, P, ReqA, N_A)}inv(pk(idp))
+  P->B: {f3(B, P, {f2(B, P, ReqA, N_A)}inv(pk(idp)), N_P_req)}inv(pk(P))
+  B->P: {{f4(B, P, N_P_req, Photos)}inv(pk(B))}pk(P)
+
+Goals:
+  Photos secret between B,P
+```
 ## 2. 与 Week 2 的核心变更 (Changes from Week 2)
 * **引入格式**：参照课件中的 Format（格式标签） 方法，为每条消息加上唯一的类型标签，将所有"裸拼接"替换为带格式的结构。
 * **去除 A 预知所有公钥的假设**：A 的初始知识中不再包含所有公钥，同时设计一个独立的子协议，让 A 在需要时向 IdP 查询某个参与者的公钥。
@@ -177,6 +204,49 @@ B 发送 `{Photos}pk(P)` 时，消息中不包含 P 发出的 `N_P_req`。P 无�
 
 **攻击的本质**：整个攻击仅在入侵者和 P 之间完成，完全绕过了诚实的 A、B 和 IdP。协议依赖的"信任链"（A→IdP→P→B）在没有固定 IdP 身份的情况下，可以被入侵者单独短路。
 
+#### 最终解决方案
+
+**一：修复身份提供者IdP**
+
+将身份提供者的名称从IdP改为idp，并被视为一个固定代理。这可防止入侵者在验证过程中充当身份提供商角色，同时体现了具有单一可信身份提供商的预期架构。
+
+**二：将B与P之间的通信加密**
+
+将最终B发给P的消息加入B的签名之后用P的公钥进行加密
+
+**三：添加角色约束**
+
+引入约束
+```
+where B!=P
+```
+这防止角色B和P被实例化为同一代理。此类情况不切实际，且在模型检查过程中可能导致人为攻击。
+
+**四：简化消息内容**
+
+与前一版本相比，协议消息在保留必要绑定的同时进行了简化：
+```
+f3(B, P, {f2(B, P, ReqA, N_A)}inv(pk(idp)), N_P_req)
+f4(B, P, N_P_req, Photos)
+```
+身份标识和随机数确保了适当的会话绑定，并防止重放攻击或混淆攻击。
+
+#### 主协议 OFMC 最终完整输出
+```
+SUMMARY:
+  NO_ATTACK_FOUND
+GOAL:
+  as specified
+DETAILS:
+  BOUNDED_NUMBER_OF_SESSIONS
+BACKEND:
+  Open-Source Fixedpoint Model-Checker version 2024
+STATISTICS:
+  TIME 91359 ms
+  parseTime 0 ms
+```
+
+
 ## 4. 特殊任务：证明协议是 Type-Flaw Resistant
 
 **目标**：证明你的协议（主协议 + 子协议）是类型无缺陷的（Type-Flaw Resistant）。
@@ -187,30 +257,30 @@ B 发送 `{Photos}pk(P)` 时，消息中不包含 P 发出的 `N_P_req`。P 无�
 
 将所有消息抽象为最一般模式（只保留结构、格式标签、加密结构，用变量表示参数）：
 
-1. m1​=f1(X1​,X2​,X3​,N1​,N2​,W1​)  
-2. m2​={f2(X1​,X2​,X3​,N1​,N2​)}sk​   
-3. m3​={f2(X1​,X2​,X3​,N1​,N2​)}sk​  
-4. m4​={f3(M1​,N3​)}sk​  
-5. m5​={f4(N4​)}pk​  
+1. m1​={f1(X1​,X2​​,N1​,N2​,W1​)}pk  
+2. m2​={f2(X1​,X2​​,N1​,N2​)}sk​   
+3. m3​={f2(X1​,X2​​,N1​,N2​)}sk​  
+4. m4​={f3(X1​,X2​​,M1​,N3​)}sk​  
+5. m5​={{f4(X1​,X2​​,N3,N4​)}sk​}pk 
 
 **SMP = { m₁, m₂, m₃, m₄, m₅ }**
 
 **Step 2：两两检查是否可合一（unify）**
 
 1. m₁ 与其他所有消息  
-- m₁ 是明文 f1，其余都是加密消息  
-- 结构完全不同，不存在合一子 σ  
+- m₁是单层公钥加密的 f1 结构（5 参数），其余为私钥签名 / 嵌套加密结构   
+- 格式标签、加密类型均不同 
 2. m₂ 与 m₄  
-- m₂：内部 f2，5 个参数  
-- m₄：内部 f3，2 个参数  
-格式标签、参数个数均不同，不可合一  
+- m₂：内部 f2，4 个基础参数  
+- m₄：内部 f3，含加密子项的 4 参数 
+格式标签、参数类型均不同，不可合一  
 3. m₂ 与 m₅  
-- m₂：内部 f2，5 个参数  
-- m₅：内部 f4，1 个参数  
+- m2​ 是单层私钥签名  
+- m5​ 是私钥签名 + 公钥加密的嵌套结构  
 不可合一  
 4. m₄ 与 m₅  
-- m₄：内部 f3，2 个参数  
-- m₅：内部 f4，1 个参数  
+- m4​ 是单层私钥签名 
+- m5​ 是私钥签名 + 公钥加密的嵌套结构  
 不可合一  
 5. m₂ 与 m₃  
 - 结构、格式标签、参数完全一样  
@@ -245,8 +315,3 @@ B 发送 `{Photos}pk(P)` 时，消息中不包含 P 发出的 `N_P_req`。P 无�
 - 满足 Type-Flaw Resistant 的条件
 ---
 
-
-## 5. 后续改进计划
-* 需要解决 IdP 身份绑定问题：P 在接受令牌前，需有机制确认令牌确实来自合法的 IdP（而非任何持有公私钥的代理）。
-* 研究如何将 B 的响应与 P 的请求 `N_P_req` 进行绑定，防止入侵者冒充 B 替换 Photos 内容。
-* 考虑在下周引入双向认证或 nonce challenge 机制来修复上述漏洞。
