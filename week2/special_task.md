@@ -1,31 +1,69 @@
 # Special Task: Static Analysis (Week 2)
 
-## 1. 任务背景
-假设协议在诚实代理（A, B, P）之间运行，入侵者 $i$ 仅作为网络观察者，窃听所有传输的消息，但不主动发送或拦截消息。
+## Task
 
-## 2. 公开传输的消息 (Network Messages)
-根据 `week2_v1.AnB` 的定义，网络上流转的消息如下：
-1. $M_1 (A 	o P): \{A, B, ReqA\}_{inv(pk(A))}$ —— A 签名的请求
-2. $M_2 (P 	o B): \{A, P, ReqP\}_{inv(pk(P))}$ —— P 转发并签名的请求
-3. $M_3 (B 	o A): \{P, B, Token\}_{inv(pk(B))}$ —— B 签发的 Token
-4. $M_4 (A 	o B): \{P, B, Token\}_{inv(pk(A))}$ —— A 转发并签名的 Token
-5. $M_5 (B 	o P): \{Photos\}_{pk(P)}$ —— B 发送给 P 的加密照片
+Assume that the Week 2 protocol runs between honest agents `A`, `B`, and `P`, and that the intruder `i` is only a passive network observer. The intruder may read all traffic on the network, but does not block, modify, or inject messages.
 
-## 3. 入侵者推导过程 (Dolev-Yao Deduction)
-入侵者的初始知识 $M = \{A, B, P, i, pk(A), pk(B), pk(P), pk(i), inv(pk(i))\}$。
+The task is to determine what the intruder can learn from the network traffic under the standard Dolev-Yao analysis rules.
 
-### 分析规则 (Analysis Steps):
-* **解析签名消息 ($M_1, M_2, M_3, M_4$)**：
-  根据 Dolev-Yao 的 `OpenSig` 规则，如果入侵者知道公钥，就能从签名消息中提取内容。
-  - 从 $M_1$ 提取：$A, B, ReqA$
-  - 从 $M_2$ 提取：$A, P, ReqP$
-  - 从 $M_3, M_4$ 提取：$P, B, Token$
-* **解密加密消息 ($M_5$)**：
-  根据 `DecAsym` 规则，解密 $\{Photos\}_{pk(P)}$ 需要私钥 $inv(pk(P))$。
-  - 由于 $inv(pk(P)) 
-otin M$，入侵者**无法解密** $M_5$。
+## Protocol Messages
 
-## 4. 结论
-* **入侵者发现的信息**：入侵者通过窃听获取了协议的所有元数据，包括请求标识符（$ReqA, ReqP$）和授权令牌（$Token$）。
-* **机密性评估**：$Photos$ 依然是安全的。在纯被动窃听下，入侵者无法获得被非对称加密保护的敏感数据。
-* **潜在风险**：虽然被动攻击无法拿到照片，但由于 $Token$ 是明文传输（仅签名），入侵者在未来如果转为“主动攻击”，可能会利用窃听到的 $Token$ 进行重放攻击。
+According to [`week2_v1.AnB`](/Users/songlinxuan/Desktop/dtu02244/week2/week2_v1.AnB), the protocol messages are:
+
+1. `M1: A -> P : {A, B, ReqA}inv(pk(A))`
+2. `M2: P -> B : {A, P, ReqP}inv(pk(P))`
+3. `M3: B -> A : {P, B, Token}inv(pk(B))`
+4. `M4: A -> B : {P, B, Token}inv(pk(A))`
+5. `M5: B -> P : {Photos}pk(P)`
+
+The Week 2 model uses signatures for authentication and a public-key encryption in the final step to protect the photo data.
+
+## Initial Intruder Knowledge
+
+The passive intruder initially knows all public agent identities and public keys, together with its own key pair:
+
+`K0 = {A, B, P, i, pk(A), pk(B), pk(P), pk(i), inv(pk(i))}`
+
+In particular, the intruder does **not** know `inv(pk(P))`.
+
+## Dolev-Yao Analysis
+
+### 1. Signed Messages Can Be Opened
+
+Messages `M1`, `M2`, `M3`, and `M4` are signed, not encrypted. By the Dolev-Yao `OpenSig` rule, the intruder can open signed messages and inspect their contents.
+
+Therefore the intruder can read:
+
+- from `M1`: `A`, `B`, `ReqA`
+- from `M2`: `A`, `P`, `ReqP`
+- from `M3`: `P`, `B`, `Token`
+- from `M4`: `P`, `B`, `Token`
+
+So after observing `M1` to `M4`, the intruder can derive the protocol metadata and the authorization token.
+
+### 2. The Final Ciphertext Cannot Be Decrypted
+
+Message `M5` is:
+
+`{Photos}pk(P)`
+
+To learn `Photos`, the intruder would need the private key `inv(pk(P))`. Since `inv(pk(P))` is not part of the initial intruder knowledge and is never sent on the network, the intruder cannot apply the Dolev-Yao decryption rule to this ciphertext.
+
+Hence the intruder can observe the ciphertext itself, but cannot derive the plaintext `Photos`.
+
+## Conclusion
+
+Under passive observation, the intruder learns:
+
+- the participating identities `A`, `B`, and `P`
+- the request values `ReqA` and `ReqP`
+- the token `Token`
+- the existence of the final encrypted message to `P`
+
+However, the intruder does **not** learn `Photos`.
+
+Therefore, in the Week 2 protocol, the confidentiality goal for `Photos` is preserved against a passive Dolev-Yao intruder.
+
+## Security Observation
+
+Although `Photos` remains confidential under passive observation, the analysis already shows a structural weakness: the token is visible on the network because it is only signed, not encrypted. This does not break secrecy in the passive setting, but it suggests that the token may become useful to an active intruder in later attacks.
