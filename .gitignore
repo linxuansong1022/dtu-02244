@@ -1,0 +1,10 @@
+special_tasks_draft.tex
+special_tasks_draft.aux
+special_tasks_draft.fdb_latexmk
+special_tasks_draft.fls
+special_tasks_draft.log
+special_tasks_draft.pdf
+special_tasks_draft.synctex.gz
+image*.png
+image copy*.png
+tmp/

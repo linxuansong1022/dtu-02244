@@ -17,10 +17,10 @@ Actions:
   A->idp: {f1(A, B, P, ReqA, N_A, pw(A))}pk(idp)
   idp->A: {f2(A, B, P, ReqA, N_A)}inv(pk(idp))
   A->P: {f2(A, B, P, ReqA, N_A)}inv(pk(idp))
-  P->B: f3req(B, P, {f2(A, B, P, ReqA, N_A)}inv(pk(idp)))
-  B->P: {f3chal(B, P, N_B)}pk(P)
-  P->B: {f3resp(B, P, {f2(A, B, P, ReqA, N_A)}inv(pk(idp)), N_P_req, N_B)}inv(pk(P))
-  B->P: {{f4(B, P, N_P_req, N_B, Photos)}inv(pk(B))}pk(P)
+  P->B: f3(B, P, {f2(A, B, P, ReqA, N_A)}inv(pk(idp)))
+  B->P: {f4(B, P, N_B)}pk(P)
+  P->B: {f5(B, P, {f2(A, B, P, ReqA, N_A)}inv(pk(idp)), N_P_req, N_B)}inv(pk(P))
+  B->P: {{f6(B, P, N_P_req, N_B, Photos)}inv(pk(B))}pk(P)
 
 Goals:
   Photos secret between B,P
