@@ -4,7 +4,7 @@ Types:
   Agent A,B,P,idp;
   Number ReqA,Photos,N_A,N_P_req,N_B;
   Function pk,pw;
-  Format f1, f2, f3req, f3chal, f3resp, f4;
+  Format f1, f2, f3, f4, f5, f6;
 
 Knowledge:
   A: A,B,P,idp,pk(idp),pw(A);
