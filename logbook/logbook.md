@@ -527,7 +527,7 @@ Since no two messages unify with mismatching types, the sub-protocol also satisf
 
 ---
 
-# Week 5 Logbook
+# Lab Logbook: Week 5 (Channels and Composition)
 
 ## Protocol Snapshot
 
@@ -780,7 +780,7 @@ Although these optimizations reduced the search space, verification for higher s
 
 ---
 
-# Week 6: Guessable Password
+# Lab Logbook: Week 6 (Guessable Password)
 
 For Week 6, we considered the password between `A` and `idp` as a **guessable secret**. The project explicitly requires that the password must **not** be used as an encryption key, and our protocol satisfies this requirement, since `pw(A)` only appears as login data and is never used to encrypt other messages.
 
